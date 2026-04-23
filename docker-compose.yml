@@ -1,0 +1,8 @@
+services:
+  kubectl-tool:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./configs:/app/configs
+    restart: unless-stopped
