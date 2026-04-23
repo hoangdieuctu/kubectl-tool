@@ -5,4 +5,5 @@ server/node_modules/
 *.log
 settings.json
 sample-configs/
+configs/
 .claude/

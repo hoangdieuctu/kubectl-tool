@@ -59,4 +59,21 @@ router.get('/pod-env', (req, res) => {
   }
 });
 
+router.get('/pod-logs', (req, res) => {
+  const { filePath, context, namespace, pod, container } = req.query;
+  if (!filePath || !namespace || !pod) {
+    return res.status(400).json({ error: 'filePath, namespace and pod are required' });
+  }
+  try {
+    const containerFlag = container ? `--container=${container}` : '';
+    const output = execSync(
+      `kubectl logs ${pod} --namespace=${namespace} --context=${context} --kubeconfig=${filePath} --tail=200 ${containerFlag}`,
+      { timeout: 20000 }
+    ).toString();
+    res.json({ logs: output });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;

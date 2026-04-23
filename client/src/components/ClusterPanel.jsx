@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Search, X, RefreshCw } from 'lucide-react';
 import { statusColor, getPodStatus, getAge, cn } from '../utils';
-import { fetchPodEnv } from '../api';
+import { fetchPodEnv, fetchPodLogs } from '../api';
 
 const RESOURCE_TABS = [
   { key: 'pods', label: 'Pods' },
@@ -149,28 +149,86 @@ function PodLiveEnv({ ctx, namespace, podName }) {
   );
 }
 
+function PodLogs({ ctx, namespace, podName, containers }) {
+  const [logs, setLogs] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [container, setContainer] = useState(containers?.[0]?.name ?? '');
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchPodLogs(ctx.filePath, ctx.name, namespace, podName, container);
+      if (data.error) throw new Error(data.error);
+      setLogs(data.logs);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        {containers?.length > 1 && (
+          <select
+            value={container}
+            onChange={e => { setContainer(e.target.value); setLogs(null); }}
+            className="bg-slate-800 border border-slate-700 text-xs text-white rounded px-2 py-1 focus:outline-none focus:border-violet-500"
+          >
+            {containers.map(c => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        )}
+        <button
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-xs text-white rounded-md transition-colors"
+        >
+          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+          {logs ? 'Refresh' : 'Fetch logs'}
+        </button>
+        {logs && <span className="text-xs text-slate-500">last 200 lines</span>}
+      </div>
+      {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
+      {logs && (
+        <pre className="text-xs text-slate-300 font-mono bg-slate-900 border border-slate-700 rounded-lg p-3 overflow-auto max-h-96 whitespace-pre-wrap break-all">
+          {logs}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 function PodExpandedContent({ pod, ctx }) {
   const [tab, setTab] = useState('spec');
+  const tabs = [
+    { key: 'spec', label: 'Spec env' },
+    { key: 'live', label: 'Live env' },
+    { key: 'logs', label: 'Logs' },
+  ];
   return (
     <div>
       <div className="flex gap-2 mb-3">
-        {['spec', 'live'].map(t => (
+        {tabs.map(t => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.key}
+            onClick={() => setTab(t.key)}
             className={cn(
               'px-3 py-1 rounded text-xs font-medium transition-colors',
-              tab === t ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
+              tab === t.key ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
             )}
           >
-            {t === 'spec' ? 'Spec env' : 'Live env'}
+            {t.label}
           </button>
         ))}
       </div>
-      {tab === 'spec'
-        ? <EnvList containers={pod.spec?.containers} />
-        : <PodLiveEnv ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} />
-      }
+      {tab === 'spec' && <EnvList containers={pod.spec?.containers} />}
+      {tab === 'live' && <PodLiveEnv ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} />}
+      {tab === 'logs' && <PodLogs ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} containers={pod.spec?.containers} />}
     </div>
   );
 }

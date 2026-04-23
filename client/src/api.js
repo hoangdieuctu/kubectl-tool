@@ -26,6 +26,13 @@ export async function fetchNamespaces(filePath, context) {
   return res.json();
 }
 
+export async function fetchResources(filePath, context, namespace) {
+  const params = new URLSearchParams({ filePath, namespace });
+  if (context) params.set('context', context);
+  const res = await fetch(`${API}/api/k8s/resources?${params}`);
+  return res.json();
+}
+
 export async function fetchPodEnv(filePath, context, namespace, pod) {
   const params = new URLSearchParams({ filePath, namespace, pod });
   if (context) params.set('context', context);
@@ -33,9 +40,10 @@ export async function fetchPodEnv(filePath, context, namespace, pod) {
   return res.json();
 }
 
-export async function fetchResources(filePath, context, namespace) {
-  const params = new URLSearchParams({ filePath, namespace });
+export async function fetchPodLogs(filePath, context, namespace, pod, container) {
+  const params = new URLSearchParams({ filePath, namespace, pod });
   if (context) params.set('context', context);
-  const res = await fetch(`${API}/api/k8s/resources?${params}`);
+  if (container) params.set('container', container);
+  const res = await fetch(`${API}/api/k8s/pod-logs?${params}`);
   return res.json();
 }
