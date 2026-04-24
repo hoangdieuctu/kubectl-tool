@@ -30,6 +30,7 @@ export default function App() {
   const [contexts, setContexts] = useState([]);
   const [selected, setSelected] = useLocalStorage('kubectl_selected_ctx', null);
   const [namespaces, setNamespaces] = useState([]);
+  const [namespacesError, setNamespacesError] = useState(null);
   const [namespacesLoading, setNamespacesLoading] = useState(false);
   const [selectedNamespace, setSelectedNamespace] = useLocalStorage('kubectl_selected_ns', null);
   const [forwards, setForwards] = useState([]);
@@ -73,10 +74,14 @@ export default function App() {
   useEffect(() => {
     if (!selected) return;
     setNamespaces([]);
+    setNamespacesError(null);
     setNamespacesLoading(true);
     fetchNamespaces(selected.filePath, selected.name)
-      .then(data => setNamespaces(data.items ?? []))
-      .catch(() => setNamespaces([]))
+      .then(data => {
+        setNamespaces(data.items ?? []);
+        setNamespacesError(data.error ?? null);
+      })
+      .catch(e => { setNamespaces([]); setNamespacesError(e.message); })
       .finally(() => setNamespacesLoading(false));
   }, [selected]);
 
@@ -229,7 +234,9 @@ export default function App() {
                   {namespacesLoading ? (
                     <span className="text-xs text-slate-500 animate-pulse">Loading namespaces…</span>
                   ) : namespaces.length === 0 ? (
-                    <span className="text-xs text-red-400">No namespaces found</span>
+                    <span className="text-xs text-red-400" title={namespacesError ?? undefined}>
+                      {namespacesError ? `Error: ${namespacesError}` : 'No namespaces found'}
+                    </span>
                   ) : (
                     <select
                       value={selectedNamespace ?? ''}

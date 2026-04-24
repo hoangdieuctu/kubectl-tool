@@ -2,7 +2,7 @@ services:
   kubectl-tool:
     build: .
     ports:
-      - "3000:3000"
+      - "3008:3008"
       # Add entries here for any ports you use with port-forward, e.g.:
       # - "8080:8080"
     volumes:

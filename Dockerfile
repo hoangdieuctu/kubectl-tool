@@ -20,5 +20,5 @@ COPY server/ ./
 COPY --from=build-client /app/client/dist ../client/dist
 
 VOLUME ["/app/configs"]
-EXPOSE 3000
+EXPOSE 3008
 CMD ["node", "index.js"]

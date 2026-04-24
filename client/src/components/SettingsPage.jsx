@@ -72,7 +72,7 @@ export default function SettingsPage({ settings, onSaved }) {
       <div className="mt-10 p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
         <p className="text-xs font-medium text-slate-400 mb-2">Docker run example</p>
         <code className="text-xs text-emerald-400 font-mono">
-          docker run -v ~/my-configs:/app/configs -p 3000:3000 kubectl-tool
+          docker run -v ~/my-configs:/app/configs -p 3008:3008 kubectl-tool
         </code>
       </div>
     </div>

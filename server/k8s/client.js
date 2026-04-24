@@ -56,6 +56,7 @@ async function safe(fn) {
     const obj = res.body ?? res;
     return { items: obj.items ?? [], error: null };
   } catch (e) {
+    console.error('[k8s]', e.message);
     return { items: [], error: e.message };
   }
 }

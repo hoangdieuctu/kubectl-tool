@@ -1,6 +1,13 @@
 import { Router } from 'express';
+import path from 'path';
 import { execSync, spawn } from 'child_process';
 import { listContexts, getNamespaces, getResources } from '../k8s/client.js';
+import { loadSettings } from '../k8s/settings.js';
+
+function resolveFilePath(filePath) {
+  const { kubeconfigDir } = loadSettings();
+  return path.join(kubeconfigDir, path.basename(filePath));
+}
 
 const router = Router();
 
@@ -20,7 +27,7 @@ router.get('/namespaces', async (req, res) => {
   const { filePath, context } = req.query;
   if (!filePath) return res.status(400).json({ error: 'filePath is required' });
   try {
-    const data = await getNamespaces(filePath, context);
+    const data = await getNamespaces(resolveFilePath(filePath), context);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -32,7 +39,7 @@ router.get('/resources', async (req, res) => {
   if (!filePath) return res.status(400).json({ error: 'filePath is required' });
   if (!namespace) return res.status(400).json({ error: 'namespace is required' });
   try {
-    const data = await getResources(filePath, context, namespace);
+    const data = await getResources(resolveFilePath(filePath), context, namespace);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -46,7 +53,7 @@ router.get('/pod-env', (req, res) => {
   }
   try {
     const output = execSync(
-      `kubectl exec ${pod} --namespace=${namespace} --context=${context} --kubeconfig=${filePath} -- printenv -0`,
+      `kubectl exec ${pod} --namespace=${namespace} --context=${context} --kubeconfig=${resolveFilePath(filePath)} -- printenv -0`,
       { timeout: 15000 }
     );
 
@@ -71,7 +78,7 @@ router.get('/pod-logs', (req, res) => {
   try {
     const containerFlag = container ? `--container=${container}` : '';
     const output = execSync(
-      `kubectl logs ${pod} --namespace=${namespace} --context=${context} --kubeconfig=${filePath} --tail=200 ${containerFlag}`,
+      `kubectl logs ${pod} --namespace=${namespace} --context=${context} --kubeconfig=${resolveFilePath(filePath)} --tail=200 ${containerFlag}`,
       { timeout: 20000 }
     ).toString();
     res.json({ logs: output });
@@ -106,7 +113,7 @@ router.post('/port-forward', (req, res) => {
     'port-forward', pod,
     `--namespace=${namespace}`,
     `--context=${context}`,
-    `--kubeconfig=${filePath}`,
+    `--kubeconfig=${resolveFilePath(filePath)}`,
     ...ports,
   ]);
 
