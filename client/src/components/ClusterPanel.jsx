@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, Component } from 'react';
-import { ChevronDown, ChevronRight, Search, X, RefreshCw } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef, Component } from 'react';
+import { ChevronDown, ChevronRight, Search, X, RefreshCw, Settings } from 'lucide-react';
 import { statusColor, getPodStatus, getAge, cn } from '../utils';
 import { fetchPodEnv, fetchPodLogs, startForward, stopForward, fetchForwards } from '../api';
 
@@ -615,9 +615,23 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
                 <span className="text-slate-300">{Object.keys(s.data ?? {}).length}</span>,
                 <span className="text-slate-400">{getAge(s.metadata?.creationTimestamp)}</span>,
               ]}>
-                <div className="text-xs text-slate-400">
-                  Keys: {Object.keys(s.data ?? {}).join(', ') || 'none'}
-                  <div className="mt-1 text-yellow-600 text-xs">Values are redacted</div>
+                <div className="space-y-2">
+                  {Object.entries(s.data ?? {}).length === 0
+                    ? <span className="text-xs text-slate-500">No data</span>
+                    : Object.entries(s.data ?? {}).map(([k, v]) => {
+                        let decoded;
+                        try { decoded = atob(v); } catch { decoded = null; }
+                        const isPrintable = decoded !== null && /^[\x09\x0a\x0d\x20-\x7e -￿]*$/.test(decoded);
+                        return (
+                          <div key={k}>
+                            <div className="text-xs text-violet-400 font-mono mb-1">{k}</div>
+                            <pre className="text-xs text-slate-300 font-mono bg-slate-800 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap break-all">
+                              {isPrintable ? decoded : <span className="text-slate-500">[binary] {v}</span>}
+                            </pre>
+                          </div>
+                        );
+                      })
+                  }
                 </div>
               </ExpandableRow>
             ))}
@@ -667,42 +681,117 @@ function useLocalStorage(key, defaultValue) {
   return [value, setValue];
 }
 
+function TabSettingsPopover({ allTabs, hidden, onToggle, onClose }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute right-0 top-full mt-1 z-50 bg-slate-800 border border-slate-700 rounded-lg shadow-xl p-3 w-52"
+    >
+      <div className="text-xs text-slate-400 font-medium mb-2 px-1">Show / hide resources</div>
+      <div className="space-y-0.5 max-h-80 overflow-y-auto">
+        {allTabs.map(tab => (
+          <label
+            key={tab.key}
+            className="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-700 cursor-pointer"
+          >
+            <input
+              type="checkbox"
+              checked={!hidden.includes(tab.key)}
+              onChange={() => onToggle(tab.key)}
+              className="accent-violet-500"
+            />
+            <span className="text-xs text-slate-300">{tab.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ClusterPanel({ data, loading, error, ctx, onForwardsChange }) {
   const [activeTab, setActiveTab] = useLocalStorage('kubectl_active_tab', 'pods');
   const [search, setSearch] = useLocalStorage('kubectl_search', '');
+  const [hiddenTabs, setHiddenTabs] = useLocalStorage('kubectl_hidden_tabs', []);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const visibleTabs = RESOURCE_TABS.filter(t => !hiddenTabs.includes(t.key));
 
   function switchTab(key) {
     setActiveTab(key);
     setSearch('');
   }
 
-  const tabsWithCount = RESOURCE_TABS.map(t => ({
+  function toggleTab(key) {
+    setHiddenTabs(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
+      // If we're hiding the active tab, switch to first visible tab
+      if (key === activeTab && !prev.includes(key)) {
+        const remaining = RESOURCE_TABS.filter(t => !next.includes(t.key));
+        if (remaining.length) switchTab(remaining[0].key);
+      }
+      return next;
+    });
+  }
+
+  const tabsWithCount = visibleTabs.map(t => ({
     ...t,
     count: data?.[t.key]?.items?.length ?? 0,
   }));
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-shrink-0 flex gap-1 px-4 py-2 overflow-x-auto border-b border-slate-800 bg-slate-900/50">
-        {tabsWithCount.map(tab => (
+      <div className="flex-shrink-0 flex items-center gap-1 px-4 py-2 border-b border-slate-800 bg-slate-900/50">
+        <div className="flex gap-1 overflow-x-auto flex-1 min-w-0">
+          {tabsWithCount.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => switchTab(tab.key)}
+              className={cn(
+                'flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                activeTab === tab.key
+                  ? 'bg-violet-600 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              )}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className={cn('ml-1.5 px-1 rounded text-xs', activeTab === tab.key ? 'bg-violet-500' : 'bg-slate-700 text-slate-400')}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-shrink-0 ml-1">
           <button
-            key={tab.key}
-            onClick={() => switchTab(tab.key)}
+            onClick={() => setSettingsOpen(o => !o)}
             className={cn(
-              'flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-              activeTab === tab.key
-                ? 'bg-violet-600 text-white'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              'p-1.5 rounded-md transition-colors',
+              settingsOpen ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'
             )}
+            title="Show/hide resources"
           >
-            {tab.label}
-            {tab.count > 0 && (
-              <span className={cn('ml-1.5 px-1 rounded text-xs', activeTab === tab.key ? 'bg-violet-500' : 'bg-slate-700 text-slate-400')}>
-                {tab.count}
-              </span>
-            )}
+            <Settings size={14} />
           </button>
-        ))}
+          {settingsOpen && (
+            <TabSettingsPopover
+              allTabs={RESOURCE_TABS}
+              hidden={hiddenTabs}
+              onToggle={toggleTab}
+              onClose={() => setSettingsOpen(false)}
+            />
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
