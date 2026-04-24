@@ -3,6 +3,9 @@ services:
     build: .
     ports:
       - "3000:3000"
+      # Add entries here for any ports you use with port-forward, e.g.:
+      # - "8080:8080"
     volumes:
+      # Mount your kubeconfig files into /app/configs
       - ./configs:/app/configs
     restart: unless-stopped
