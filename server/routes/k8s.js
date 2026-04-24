@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
+import pty from 'node-pty';
 import { listContexts, getNamespaces, getResources } from '../k8s/client.js';
 import { loadSettings } from '../k8s/settings.js';
 
@@ -133,3 +134,69 @@ router.delete('/port-forward/:id', (req, res) => {
 });
 
 export default router;
+
+export function handleExecSocket(ws, req) {
+  const url = new URL(req.url, 'http://localhost');
+  const filePath = url.searchParams.get('filePath');
+  const context = url.searchParams.get('context');
+  const namespace = url.searchParams.get('namespace');
+  const pod = url.searchParams.get('pod');
+  const container = url.searchParams.get('container');
+
+  if (!filePath || !namespace || !pod) {
+    ws.send('\r\nMissing required parameters (filePath, namespace, pod)\r\n');
+    ws.close();
+    return;
+  }
+
+  const kubeconfigPath = resolveFilePath(filePath);
+  const args = [
+    'exec', '-it', pod,
+    `--namespace=${namespace}`,
+    `--context=${context}`,
+    `--kubeconfig=${kubeconfigPath}`,
+    ...(container ? [`--container=${container}`] : []),
+    '--', '/bin/sh', '-c', 'TERM=xterm-256color; export TERM; [ -x /bin/bash ] && exec /bin/bash || exec /bin/sh',
+  ];
+
+  let ptyProcess;
+  try {
+    ptyProcess = pty.spawn('kubectl', args, {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: process.cwd(),
+      env: process.env,
+    });
+  } catch (e) {
+    ws.send(`\r\nFailed to start exec: ${e.message}\r\n`);
+    ws.close();
+    return;
+  }
+
+  ptyProcess.onData(data => {
+    if (ws.readyState === ws.OPEN) ws.send(data);
+  });
+
+  ptyProcess.onExit(() => {
+    if (ws.readyState === ws.OPEN) ws.close();
+  });
+
+  ws.on('message', raw => {
+    try {
+      const msg = JSON.parse(raw);
+      if (msg.type === 'resize') {
+        ptyProcess.resize(msg.cols, msg.rows);
+      } else if (msg.type === 'input') {
+        ptyProcess.write(msg.data);
+      }
+    } catch {
+      // plain text input (legacy)
+      ptyProcess.write(raw.toString());
+    }
+  });
+
+  ws.on('close', () => {
+    try { ptyProcess.kill(); } catch { /* already dead */ }
+  });
+}

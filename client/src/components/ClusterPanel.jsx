@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, Component } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, Component } from 'react';
 import { ChevronDown, ChevronRight, Search, X, RefreshCw, Settings } from 'lucide-react';
 import { statusColor, getPodStatus, getAge, cn } from '../utils';
 import { fetchPodEnv, fetchPodLogs, startForward, stopForward, fetchForwards } from '../api';
@@ -348,6 +348,135 @@ function PodPortForward({ pod, ctx, onForwardsChange }) {
   );
 }
 
+function PodExec({ ctx, namespace, podName, containers }) {
+  const [container, setContainer] = useState(containers?.[0]?.name ?? '');
+  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState(null);
+  const termRef = useRef(null);
+  const xtermRef = useRef(null);
+  const fitRef = useRef(null);
+  const wsRef = useRef(null);
+
+  const connect = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    if (xtermRef.current) {
+      xtermRef.current.dispose();
+      xtermRef.current = null;
+    }
+
+    import('@xterm/xterm').then(({ Terminal }) =>
+      import('@xterm/addon-fit').then(({ FitAddon }) => {
+        const term = new Terminal({
+          theme: { background: '#0f172a', foreground: '#e2e8f0', cursor: '#a78bfa' },
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: 13,
+          cursorBlink: true,
+          scrollback: 1000,
+        });
+        const fit = new FitAddon();
+        term.loadAddon(fit);
+        term.open(termRef.current);
+        requestAnimationFrame(() => fit.fit());
+        xtermRef.current = term;
+        fitRef.current = fit;
+
+        const params = new URLSearchParams({
+          filePath: ctx.filePath,
+          context: ctx.name,
+          namespace,
+          pod: podName,
+        });
+        if (container) params.set('container', container);
+
+        const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const host = window.location.hostname;
+        const port = import.meta.env.DEV ? '3008' : window.location.port;
+        const portSuffix = port ? `:${port}` : '';
+        const ws = new WebSocket(`${proto}://${host}${portSuffix}/ws/exec?${params}`);
+        wsRef.current = ws;
+
+        ws.onopen = () => { setConnected(true); setError(null); };
+        ws.onmessage = e => term.write(e.data);
+        ws.onerror = () => setError('WebSocket error');
+        ws.onclose = () => {
+          setConnected(false);
+          term.write('\r\n\x1b[90m[session closed]\x1b[0m\r\n');
+        };
+
+        term.onData(data => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'input', data }));
+          }
+        });
+
+        const ro = new ResizeObserver(() => {
+          fit.fit();
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+          }
+        });
+        ro.observe(termRef.current);
+        // store cleanup ref
+        term._ro = ro;
+      })
+    );
+  }, [ctx, namespace, podName, container]);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+      xtermRef.current?._ro?.disconnect();
+      xtermRef.current?.dispose();
+    };
+  }, []);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {containers?.length > 1 && (
+          <select
+            value={container}
+            onChange={e => setContainer(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-xs text-white rounded px-2 py-1 focus:outline-none focus:border-violet-500"
+          >
+            {containers.map(c => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        )}
+        <button
+          className={cn(
+            'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
+            connected
+              ? 'bg-red-700 hover:bg-red-600 text-white'
+              : 'bg-violet-600 hover:bg-violet-500 text-white'
+          )}
+          onClick={() => {
+            if (connected) {
+              wsRef.current?.close();
+            } else {
+              connect();
+            }
+          }}
+        >
+          {connected ? 'Disconnect' : 'Connect'}
+        </button>
+        {connected && <span className="text-xs text-emerald-400">● connected</span>}
+      </div>
+      {error && <div className="text-xs text-red-400">{error}</div>}
+      <div
+        ref={termRef}
+        className="rounded-lg border border-slate-700"
+        style={{ height: '400px', background: '#0f172a', overflow: 'hidden' }}
+      />
+    </div>
+  );
+}
+
 function PodExpandedContent({ pod, ctx, onForwardsChange }) {
   const [tab, setTab] = useState('spec');
   const tabs = [
@@ -355,6 +484,7 @@ function PodExpandedContent({ pod, ctx, onForwardsChange }) {
     { key: 'live', label: 'Live env' },
     { key: 'logs', label: 'Logs' },
     { key: 'forward', label: 'Port Forward' },
+    { key: 'exec', label: 'Exec' },
   ];
   return (
     <div>
@@ -376,6 +506,7 @@ function PodExpandedContent({ pod, ctx, onForwardsChange }) {
       {tab === 'live' && <PodLiveEnv ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} />}
       {tab === 'logs' && <PodLogs ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} containers={pod.spec?.containers} />}
       {tab === 'forward' && <PodPortForward pod={pod} ctx={ctx} onForwardsChange={onForwardsChange} />}
+      {tab === 'exec' && <PodExec ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} containers={pod.spec?.containers} />}
     </div>
   );
 }

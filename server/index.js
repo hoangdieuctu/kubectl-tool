@@ -1,9 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { createServer } from 'http';
 import { fileURLToPath } from 'url';
+import { WebSocketServer } from 'ws';
 import settingsRouter from './routes/settings.js';
-import k8sRouter from './routes/k8s.js';
+import k8sRouter, { handleExecSocket } from './routes/k8s.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -22,6 +24,11 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
-app.listen(PORT, () => {
+const server = createServer(app);
+
+const wss = new WebSocketServer({ server, path: '/ws/exec' });
+wss.on('connection', (ws, req) => handleExecSocket(ws, req));
+
+server.listen(PORT, () => {
   console.log(`kubectl-tool server running on port ${PORT}`);
 });
