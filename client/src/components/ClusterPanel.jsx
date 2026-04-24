@@ -1,7 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Component } from 'react';
 import { ChevronDown, ChevronRight, Search, X, RefreshCw } from 'lucide-react';
 import { statusColor, getPodStatus, getAge, cn } from '../utils';
-import { fetchPodEnv, fetchPodLogs } from '../api';
+import { fetchPodEnv, fetchPodLogs, startForward, stopForward, fetchForwards } from '../api';
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) return (
+      <div className="text-xs text-red-400 p-2">Error: {this.state.error.message}</div>
+    );
+    return this.props.children;
+  }
+}
 
 const RESOURCE_TABS = [
   { key: 'pods', label: 'Pods' },
@@ -92,6 +103,7 @@ function PodLiveEnv({ ctx, namespace, podName }) {
   const [env, setEnv] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
 
   async function load() {
     setLoading(true);
@@ -118,6 +130,10 @@ function PodLiveEnv({ ctx, namespace, podName }) {
     );
   }
 
+  const filtered = env
+    ? (search ? env.filter(e => e.name.toLowerCase().includes(search.toLowerCase())) : env)
+    : [];
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
@@ -128,22 +144,39 @@ function PodLiveEnv({ ctx, namespace, podName }) {
       </div>
       {error && <div className="text-xs text-red-400">{error}</div>}
       {env && (
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-slate-500">
-              <th className="text-left pr-4 pb-1 font-normal">Name</th>
-              <th className="text-left pb-1 font-normal">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {env.map((e, i) => (
-              <tr key={i} className="border-t border-slate-700/50">
-                <td className="pr-4 py-0.5 text-slate-300 font-mono align-top">{e.name}</td>
-                <td className="py-0.5 text-slate-400 font-mono whitespace-pre-wrap break-all">{e.value}</td>
+        <>
+          <div className="relative mb-2">
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filter by name…"
+              className="w-full bg-slate-800 border border-slate-700 rounded pl-8 pr-8 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                <X size={12} />
+              </button>
+            )}
+          </div>
+          <div className="text-xs text-slate-500 mb-1">{filtered.length} / {env.length} vars</div>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-slate-500">
+                <th className="text-left pr-4 pb-1 font-normal">Name</th>
+                <th className="text-left pb-1 font-normal">Value</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((e, i) => (
+                <tr key={i} className="border-t border-slate-700/50">
+                  <td className="pr-4 py-0.5 text-slate-300 font-mono align-top">{e.name}</td>
+                  <td className="py-0.5 text-slate-400 font-mono whitespace-pre-wrap break-all">{e.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
     </div>
   );
@@ -154,6 +187,7 @@ function PodLogs({ ctx, namespace, podName, containers }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [container, setContainer] = useState(containers?.[0]?.name ?? '');
+  const [search, setSearch] = useState('');
 
   async function load() {
     setLoading(true);
@@ -168,6 +202,14 @@ function PodLogs({ ctx, namespace, podName, containers }) {
       setLoading(false);
     }
   }
+
+  const filteredLines = useMemo(() => {
+    if (!logs) return [];
+    const lines = logs.split('\n');
+    if (!search) return lines;
+    const q = search.toLowerCase();
+    return lines.filter(line => line.toLowerCase().includes(q));
+  }, [logs, search]);
 
   return (
     <div>
@@ -195,20 +237,124 @@ function PodLogs({ ctx, namespace, podName, containers }) {
       </div>
       {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
       {logs && (
-        <pre className="text-xs text-slate-300 font-mono bg-slate-900 border border-slate-700 rounded-lg p-3 overflow-auto max-h-96 whitespace-pre-wrap break-all">
-          {logs}
-        </pre>
+        <>
+          <div className="relative mb-2">
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filter logs…"
+              className="w-full bg-slate-800 border border-slate-700 rounded pl-8 pr-8 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 font-mono"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                <X size={12} />
+              </button>
+            )}
+          </div>
+          {search && <div className="text-xs text-slate-500 mb-1">{filteredLines.length} matching lines</div>}
+          <pre className="text-xs text-slate-300 font-mono bg-slate-900 border border-slate-700 rounded-lg p-3 overflow-auto max-h-96 whitespace-pre-wrap break-all">
+            {filteredLines.join('\n')}
+          </pre>
+        </>
       )}
     </div>
   );
 }
 
-function PodExpandedContent({ pod, ctx }) {
+function PodPortForward({ pod, ctx, onForwardsChange }) {
+  const [portsInput, setPortsInput] = useState('');
+  const [activeForward, setActiveForward] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const namespace = pod.metadata?.namespace;
+  const podName = pod.metadata?.name;
+
+  // Check if this pod already has an active forward
+  useEffect(() => {
+    fetchForwards().then(list => {
+      const fwd = list.find(f => f.pod === podName && f.namespace === namespace);
+      setActiveForward(fwd ?? null);
+    });
+  }, [podName, namespace]);
+
+  async function handleStart() {
+    const ports = portsInput.split(',').map(p => p.trim()).filter(Boolean);
+    if (!ports.length) return setError('Enter at least one port (e.g. 8080:8080)');
+    setLoading(true);
+    setError(null);
+    try {
+      const fwd = await startForward({ filePath: ctx.filePath, context: ctx.name, namespace, pod: podName, ports });
+      if (fwd.error) throw new Error(fwd.error);
+      setActiveForward(fwd);
+      onForwardsChange?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleStop() {
+    if (!activeForward) return;
+    setLoading(true);
+    try {
+      await stopForward(activeForward.id);
+      setActiveForward(null);
+      onForwardsChange?.();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {activeForward ? (
+        <div className="flex items-center gap-3 p-3 bg-emerald-900/20 border border-emerald-700 rounded-lg">
+          <div className="flex-1">
+            <div className="text-xs font-medium text-emerald-400">Active forward</div>
+            <div className="text-xs text-slate-300 font-mono mt-0.5">{activeForward.ports.join(', ')}</div>
+          </div>
+          <button
+            onClick={handleStop}
+            disabled={loading}
+            className="px-3 py-1.5 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white text-xs rounded-md transition-colors"
+          >
+            Stop
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            value={portsInput}
+            onChange={e => setPortsInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleStart()}
+            placeholder="8080:8080, 9090:9090"
+            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 font-mono"
+          />
+          <button
+            onClick={handleStart}
+            disabled={loading || !portsInput.trim()}
+            className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            {loading ? 'Starting…' : 'Start'}
+          </button>
+        </div>
+      )}
+      {error && <div className="text-xs text-red-400">{error}</div>}
+      <p className="text-xs text-slate-500">Format: <span className="font-mono">localPort:remotePort</span> — comma-separate multiple ports</p>
+    </div>
+  );
+}
+
+function PodExpandedContent({ pod, ctx, onForwardsChange }) {
   const [tab, setTab] = useState('spec');
   const tabs = [
     { key: 'spec', label: 'Spec env' },
     { key: 'live', label: 'Live env' },
     { key: 'logs', label: 'Logs' },
+    { key: 'forward', label: 'Port Forward' },
   ];
   return (
     <div>
@@ -229,11 +375,12 @@ function PodExpandedContent({ pod, ctx }) {
       {tab === 'spec' && <EnvList containers={pod.spec?.containers} />}
       {tab === 'live' && <PodLiveEnv ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} />}
       {tab === 'logs' && <PodLogs ctx={ctx} namespace={pod.metadata?.namespace} podName={pod.metadata?.name} containers={pod.spec?.containers} />}
+      {tab === 'forward' && <PodPortForward pod={pod} ctx={ctx} onForwardsChange={onForwardsChange} />}
     </div>
   );
 }
 
-function ResourceTable({ resourceKey, data, ctx, search, setSearch }) {
+function ResourceTable({ resourceKey, data, ctx, search, setSearch, onForwardsChange }) {
   const items = data?.[resourceKey]?.items ?? [];
   const error = data?.[resourceKey]?.error;
 
@@ -276,14 +423,14 @@ function ResourceTable({ resourceKey, data, ctx, search, setSearch }) {
 
       <div className="overflow-x-auto rounded-lg border border-slate-800">
         <table className="w-full">
-          <ResourceRows resourceKey={resourceKey} items={filtered} ctx={ctx} />
+          <ResourceRows resourceKey={resourceKey} items={filtered} ctx={ctx} onForwardsChange={onForwardsChange} />
         </table>
       </div>
     </div>
   );
 }
 
-function ResourceRows({ resourceKey, items, ctx }) {
+function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
   switch (resourceKey) {
     case 'pods':
       return (
@@ -309,7 +456,9 @@ function ResourceRows({ resourceKey, items, ctx }) {
                   <span className={restarts > 0 ? 'text-yellow-400' : 'text-slate-300'}>{restarts}</span>,
                   <span className="text-slate-400">{getAge(pod.metadata?.creationTimestamp)}</span>,
                 ]}>
-                  <PodExpandedContent pod={pod} ctx={ctx} />
+                  <ErrorBoundary>
+                    <PodExpandedContent pod={pod} ctx={ctx} onForwardsChange={onForwardsChange} />
+                  </ErrorBoundary>
                 </ExpandableRow>
               );
             })}
@@ -503,9 +652,24 @@ function ResourceRows({ resourceKey, items, ctx }) {
   }
 }
 
-export default function ClusterPanel({ data, loading, error, ctx }) {
-  const [activeTab, setActiveTab] = useState('pods');
-  const [search, setSearch] = useState('');
+function useLocalStorage(key, defaultValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored !== null ? JSON.parse(stored) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  }, [key, value]);
+  return [value, setValue];
+}
+
+export default function ClusterPanel({ data, loading, error, ctx, onForwardsChange }) {
+  const [activeTab, setActiveTab] = useLocalStorage('kubectl_active_tab', 'pods');
+  const [search, setSearch] = useLocalStorage('kubectl_search', '');
 
   function switchTab(key) {
     setActiveTab(key);
@@ -547,7 +711,7 @@ export default function ClusterPanel({ data, loading, error, ctx }) {
         ) : error ? (
           <div className="p-4 text-red-400 text-sm bg-red-900/20 rounded-lg border border-red-800">{error}</div>
         ) : (
-          <ResourceTable resourceKey={activeTab} data={data} ctx={ctx} search={search} setSearch={setSearch} />
+          <ResourceTable resourceKey={activeTab} data={data} ctx={ctx} search={search} setSearch={setSearch} onForwardsChange={onForwardsChange} />
         )}
       </div>
     </div>

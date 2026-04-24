@@ -47,3 +47,22 @@ export async function fetchPodLogs(filePath, context, namespace, pod, container)
   const res = await fetch(`${API}/api/k8s/pod-logs?${params}`);
   return res.json();
 }
+
+export async function fetchForwards() {
+  const res = await fetch(`${API}/api/k8s/port-forward`);
+  return res.json();
+}
+
+export async function startForward(data) {
+  const res = await fetch(`${API}/api/k8s/port-forward`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function stopForward(id) {
+  const res = await fetch(`${API}/api/k8s/port-forward/${id}`, { method: 'DELETE' });
+  return res.json();
+}

@@ -1,8 +1,12 @@
 import { Router } from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { listContexts, getNamespaces, getResources } from '../k8s/client.js';
 
 const router = Router();
+
+// In-memory store: id -> { id, pod, namespace, ports, process, startedAt }
+const forwards = new Map();
+let nextId = 1;
 
 router.get('/contexts', (_req, res) => {
   try {
@@ -74,6 +78,51 @@ router.get('/pod-logs', (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+router.get('/port-forward', (_req, res) => {
+  const list = [...forwards.values()].map(({ id, pod, namespace, ports, startedAt }) => ({
+    id, pod, namespace, ports, startedAt,
+  }));
+  res.json(list);
+});
+
+router.post('/port-forward', (req, res) => {
+  const { filePath, context, namespace, pod, ports } = req.body;
+  if (!filePath || !namespace || !pod || !ports?.length) {
+    return res.status(400).json({ error: 'filePath, namespace, pod and ports are required' });
+  }
+
+  // Kill existing forward for same pod
+  for (const [id, fwd] of forwards) {
+    if (fwd.pod === pod && fwd.namespace === namespace) {
+      fwd.process.kill();
+      forwards.delete(id);
+    }
+  }
+
+  const id = nextId++;
+  const proc = spawn('kubectl', [
+    'port-forward', pod,
+    `--namespace=${namespace}`,
+    `--context=${context}`,
+    `--kubeconfig=${filePath}`,
+    ...ports,
+  ]);
+
+  proc.on('exit', () => forwards.delete(id));
+
+  forwards.set(id, { id, pod, namespace, ports, process: proc, startedAt: new Date().toISOString() });
+  res.json({ id, pod, namespace, ports });
+});
+
+router.delete('/port-forward/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const fwd = forwards.get(id);
+  if (!fwd) return res.status(404).json({ error: 'Forward not found' });
+  fwd.process.kill();
+  forwards.delete(id);
+  res.json({ ok: true });
 });
 
 export default router;

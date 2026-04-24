@@ -1,18 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchContexts, fetchResources, fetchSettings, fetchNamespaces } from '../api';
+import { fetchContexts, fetchResources, fetchSettings, fetchNamespaces, fetchForwards, stopForward } from '../api';
 import ClusterPanel from './ClusterPanel';
 import SettingsPage from './SettingsPage';
-import { Server, Settings, RefreshCw } from 'lucide-react';
+import { Server, Settings, RefreshCw, Plug } from 'lucide-react';
 import { cn } from '../utils';
+
+function useLocalStorage(key, defaultValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored !== null ? JSON.parse(stored) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  }, [key, value]);
+
+  return [value, setValue];
+}
 
 export default function App() {
   const [page, setPage] = useState('clusters');
   const [settings, setSettings] = useState(null);
   const [contexts, setContexts] = useState([]);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useLocalStorage('kubectl_selected_ctx', null);
   const [namespaces, setNamespaces] = useState([]);
   const [namespacesLoading, setNamespacesLoading] = useState(false);
-  const [selectedNamespace, setSelectedNamespace] = useState(null);
+  const [selectedNamespace, setSelectedNamespace] = useLocalStorage('kubectl_selected_ns', null);
+  const [forwards, setForwards] = useState([]);
   const [resourceData, setResourceData] = useState(null);
   const [resourceLoading, setResourceLoading] = useState(false);
   const [resourceError, setResourceError] = useState(null);
@@ -21,6 +41,9 @@ export default function App() {
   useEffect(() => {
     fetchSettings().then(setSettings);
     loadContexts();
+    loadForwards();
+    const id = setInterval(loadForwards, 5000);
+    return () => clearInterval(id);
   }, []);
 
   async function loadContexts() {
@@ -32,18 +55,37 @@ export default function App() {
     }
   }
 
+  async function loadForwards() {
+    try {
+      const list = await fetchForwards();
+      setForwards(list);
+    } catch {
+      setForwards([]);
+    }
+  }
+
+  async function handleStopForward(id) {
+    await stopForward(id);
+    loadForwards();
+  }
+
   // When cluster is selected, fetch its namespaces
   useEffect(() => {
     if (!selected) return;
     setNamespaces([]);
-    setSelectedNamespace(null);
-    setResourceData(null);
     setNamespacesLoading(true);
     fetchNamespaces(selected.filePath, selected.name)
       .then(data => setNamespaces(data.items ?? []))
       .catch(() => setNamespaces([]))
       .finally(() => setNamespacesLoading(false));
   }, [selected]);
+
+  // When namespaces load, validate saved namespace is still valid
+  useEffect(() => {
+    if (!namespaces.length) return;
+    const valid = namespaces.some(ns => ns.metadata?.name === selectedNamespace);
+    if (!valid) setSelectedNamespace(null);
+  }, [namespaces]);
 
   const loadResources = useCallback(async (ctx, ns) => {
     if (!ctx || !ns) return;
@@ -83,9 +125,33 @@ export default function App() {
       <header className="flex-shrink-0 flex items-center justify-between px-5 h-12 bg-slate-900 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <Server size={18} className="text-violet-400" />
-          <span className="text-sm font-semibold text-white">kubectl-tool</span>
+          <span className="text-sm font-semibold text-white">Kubectl Tool</span>
+          <span className="text-xs text-slate-500">v{import.meta.env.APP_VERSION}</span>
         </div>
         <div className="flex items-center gap-2">
+          {forwards.length > 0 && (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-900/20 border border-emerald-800 rounded-lg">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <Plug size={12} className="text-emerald-400" />
+              <span className="text-xs text-emerald-400 font-medium">{forwards.length} forward{forwards.length > 1 ? 's' : ''}</span>
+              <div className="flex items-center gap-1 ml-1">
+                {forwards.map(fwd => (
+                  <div key={fwd.id} className="flex items-center gap-1 bg-slate-800 rounded px-2 py-0.5">
+                    <span className="text-xs text-slate-300 font-mono">{fwd.pod.split('-').slice(0, 3).join('-')} · {fwd.ports.join(', ')}</span>
+                    <button
+                      onClick={() => handleStopForward(fwd.id)}
+                      className="ml-1 text-slate-500 hover:text-red-400 transition-colors text-sm leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {lastRefresh && (
             <span className="text-xs text-slate-500">
               Updated {lastRefresh.toLocaleTimeString()}
@@ -191,6 +257,7 @@ export default function App() {
                       loading={resourceLoading}
                       error={resourceError}
                       ctx={selected}
+                      onForwardsChange={loadForwards}
                     />
                   )}
                 </div>
