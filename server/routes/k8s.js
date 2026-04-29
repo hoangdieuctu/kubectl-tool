@@ -2,7 +2,7 @@ import { Router } from 'express';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
 import pty from 'node-pty';
-import { listContexts, getNamespaces, getResources } from '../k8s/client.js';
+import { listContexts, getNamespaces, getResources, getSecret, getResource } from '../k8s/client.js';
 import { loadSettings } from '../k8s/settings.js';
 
 function resolveFilePath(filePath) {
@@ -29,6 +29,28 @@ router.get('/namespaces', async (req, res) => {
   if (!filePath) return res.status(400).json({ error: 'filePath is required' });
   try {
     const data = await getNamespaces(resolveFilePath(filePath), context);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/resource', async (req, res) => {
+  const { filePath, context, namespace, resourceKey } = req.query;
+  if (!filePath || !resourceKey) return res.status(400).json({ error: 'filePath and resourceKey are required' });
+  try {
+    const data = await getResource(resolveFilePath(filePath), context, namespace, resourceKey);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/secret', async (req, res) => {
+  const { filePath, context, namespace, name } = req.query;
+  if (!filePath || !namespace || !name) return res.status(400).json({ error: 'filePath, namespace and name are required' });
+  try {
+    const data = await getSecret(resolveFilePath(filePath), context, namespace, name);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });

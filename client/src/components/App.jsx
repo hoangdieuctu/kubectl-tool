@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchContexts, fetchResources, fetchSettings, fetchNamespaces, fetchForwards, stopForward } from '../api';
+import { fetchContexts, fetchResource, fetchSettings, fetchNamespaces, fetchForwards, stopForward } from '../api';
 import ClusterPanel from './ClusterPanel';
 import SettingsPage from './SettingsPage';
 import { Server, Settings, RefreshCw, Plug } from 'lucide-react';
@@ -34,10 +34,11 @@ export default function App() {
   const [namespacesLoading, setNamespacesLoading] = useState(false);
   const [selectedNamespace, setSelectedNamespace] = useLocalStorage('kubectl_selected_ns', null);
   const [forwards, setForwards] = useState([]);
-  const [resourceData, setResourceData] = useState(null);
+  const [resourceData, setResourceData] = useState({});
   const [resourceLoading, setResourceLoading] = useState(false);
   const [resourceError, setResourceError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [activeTab, setActiveTab] = useLocalStorage('kubectl_active_tab', 'pods');
 
   useEffect(() => {
     fetchSettings().then(setSettings);
@@ -90,15 +91,16 @@ export default function App() {
     if (!namespaces.length) return;
     const valid = namespaces.some(ns => ns.metadata?.name === selectedNamespace);
     if (!valid) setSelectedNamespace(null);
+    else setResourceData({});
   }, [namespaces]);
 
-  const loadResources = useCallback(async (ctx, ns) => {
-    if (!ctx || !ns) return;
+  const loadTab = useCallback(async (ctx, ns, tab) => {
+    if (!ctx || !ns || !tab) return;
     setResourceLoading(true);
     setResourceError(null);
     try {
-      const data = await fetchResources(ctx.filePath, ctx.name, ns);
-      setResourceData(data);
+      const data = await fetchResource(ctx.filePath, ctx.name, ns, tab);
+      setResourceData(prev => ({ ...prev, [tab]: data }));
       setLastRefresh(new Date());
     } catch (e) {
       setResourceError(e.message);
@@ -107,20 +109,21 @@ export default function App() {
     }
   }, []);
 
-  // When namespace is selected, fetch resources
+  // When namespace or active tab changes, fetch that tab's data if not already loaded
   useEffect(() => {
     if (!selected || !selectedNamespace) return;
-    loadResources(selected, selectedNamespace);
-  }, [selected, selectedNamespace, loadResources]);
+    loadTab(selected, selectedNamespace, activeTab);
+  }, [selected, selectedNamespace, activeTab, loadTab]);
 
   function selectContext(ctx) {
     if (selected?.filePath === ctx.filePath && selected?.name === ctx.name) {
       setSelected(null);
       setNamespaces([]);
       setSelectedNamespace(null);
-      setResourceData(null);
+      setResourceData({});
     } else {
       setSelected(ctx);
+      setResourceData({});
     }
   }
 
@@ -164,7 +167,7 @@ export default function App() {
           )}
           {selected && selectedNamespace && (
             <button
-              onClick={() => loadResources(selected, selectedNamespace)}
+              onClick={() => loadTab(selected, selectedNamespace, activeTab)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors"
             >
               <RefreshCw size={13} />
@@ -240,7 +243,7 @@ export default function App() {
                   ) : (
                     <select
                       value={selectedNamespace ?? ''}
-                      onChange={e => setSelectedNamespace(e.target.value || null)}
+                      onChange={e => { setSelectedNamespace(e.target.value || null); setResourceData({}); }}
                       className="bg-slate-800 border border-slate-700 text-sm text-white rounded-lg px-3 py-1.5 focus:outline-none focus:border-violet-500 cursor-pointer"
                     >
                       <option value="">Select namespace…</option>
@@ -261,9 +264,14 @@ export default function App() {
                   ) : (
                     <ClusterPanel
                       data={resourceData}
-                      loading={resourceLoading}
+                      loading={resourceLoading && !resourceData[activeTab]}
                       error={resourceError}
                       ctx={selected}
+                      activeTab={activeTab}
+                      onTabChange={tab => {
+                        setActiveTab(tab);
+                        setResourceData(prev => ({ ...prev }));
+                      }}
                       onForwardsChange={loadForwards}
                     />
                   )}

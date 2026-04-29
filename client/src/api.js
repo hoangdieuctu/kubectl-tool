@@ -26,6 +26,14 @@ export async function fetchNamespaces(filePath, context) {
   return res.json();
 }
 
+export async function fetchResource(filePath, context, namespace, resourceKey) {
+  const params = new URLSearchParams({ filePath, resourceKey });
+  if (context) params.set('context', context);
+  if (namespace) params.set('namespace', namespace);
+  const res = await fetch(`${API}/api/k8s/resource?${params}`);
+  return res.json();
+}
+
 export async function fetchResources(filePath, context, namespace) {
   const params = new URLSearchParams({ filePath, namespace });
   if (context) params.set('context', context);
@@ -59,6 +67,13 @@ export async function startForward(data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  return res.json();
+}
+
+export async function fetchSecret(filePath, context, namespace, name) {
+  const params = new URLSearchParams({ filePath, namespace, name });
+  if (context) params.set('context', context);
+  const res = await fetch(`${API}/api/k8s/secret?${params}`);
   return res.json();
 }
 

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback, Component } from 'react';
 import { ChevronDown, ChevronRight, Search, X, RefreshCw, Settings } from 'lucide-react';
 import { statusColor, getPodStatus, getAge, cn } from '../utils';
-import { fetchPodEnv, fetchPodLogs, startForward, stopForward, fetchForwards } from '../api';
+import { fetchPodEnv, fetchPodLogs, startForward, stopForward, fetchForwards, fetchSecret } from '../api';
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -561,6 +561,45 @@ function ResourceTable({ resourceKey, data, ctx, search, setSearch, onForwardsCh
   );
 }
 
+function SecretData({ ctx, namespace, name }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchSecret(ctx.filePath, ctx.name, namespace, name)
+      .then(res => {
+        if (res.error) throw new Error(res.error);
+        setData(res.item?.data ?? null);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [ctx, namespace, name]);
+
+  if (loading) return <span className="text-xs text-slate-500 animate-pulse">Loading…</span>;
+  if (error) return <span className="text-xs text-red-400">Error: {error}</span>;
+  if (!data || Object.keys(data).length === 0) return <span className="text-xs text-slate-500">No data</span>;
+
+  return (
+    <div className="space-y-2">
+      {Object.entries(data).map(([k, v]) => {
+        let decoded;
+        try { decoded = atob(v); } catch { decoded = null; }
+        const isPrintable = decoded !== null && /^[\x09\x0a\x0d\x20-\x7e-￿]*$/.test(decoded);
+        return (
+          <div key={k}>
+            <div className="text-xs text-violet-400 font-mono mb-1">{k}</div>
+            <pre className="text-xs text-slate-300 font-mono bg-slate-800 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap break-all">
+              {isPrintable ? decoded : <span className="text-slate-500">[binary] {v}</span>}
+            </pre>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
   switch (resourceKey) {
     case 'pods':
@@ -743,27 +782,10 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
                 <span className="text-slate-400">{s.metadata?.namespace}</span>,
                 <span className="text-white font-mono text-xs">{s.metadata?.name}</span>,
                 <span className="text-slate-400 text-xs">{s.type}</span>,
-                <span className="text-slate-300">{Object.keys(s.data ?? {}).length}</span>,
+                <span className="text-slate-300">{s._dataKeys ?? 0}</span>,
                 <span className="text-slate-400">{getAge(s.metadata?.creationTimestamp)}</span>,
               ]}>
-                <div className="space-y-2">
-                  {Object.entries(s.data ?? {}).length === 0
-                    ? <span className="text-xs text-slate-500">No data</span>
-                    : Object.entries(s.data ?? {}).map(([k, v]) => {
-                        let decoded;
-                        try { decoded = atob(v); } catch { decoded = null; }
-                        const isPrintable = decoded !== null && /^[\x09\x0a\x0d\x20-\x7e -￿]*$/.test(decoded);
-                        return (
-                          <div key={k}>
-                            <div className="text-xs text-violet-400 font-mono mb-1">{k}</div>
-                            <pre className="text-xs text-slate-300 font-mono bg-slate-800 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap break-all">
-                              {isPrintable ? decoded : <span className="text-slate-500">[binary] {v}</span>}
-                            </pre>
-                          </div>
-                        );
-                      })
-                  }
-                </div>
+                <SecretData ctx={ctx} namespace={s.metadata?.namespace} name={s.metadata?.name} />
               </ExpandableRow>
             ))}
           </tbody>
@@ -849,8 +871,8 @@ function TabSettingsPopover({ allTabs, hidden, onToggle, onClose }) {
   );
 }
 
-export default function ClusterPanel({ data, loading, error, ctx, onForwardsChange }) {
-  const [activeTab, setActiveTab] = useLocalStorage('kubectl_active_tab', 'pods');
+export default function ClusterPanel({ data, loading, error, ctx, activeTab, onTabChange, onForwardsChange }) {
+  const [, setStoredTab] = useLocalStorage('kubectl_active_tab', 'pods');
   const [search, setSearch] = useLocalStorage('kubectl_search', '');
   const [hiddenTabs, setHiddenTabs] = useLocalStorage('kubectl_hidden_tabs', []);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -858,14 +880,14 @@ export default function ClusterPanel({ data, loading, error, ctx, onForwardsChan
   const visibleTabs = RESOURCE_TABS.filter(t => !hiddenTabs.includes(t.key));
 
   function switchTab(key) {
-    setActiveTab(key);
+    setStoredTab(key);
+    onTabChange?.(key);
     setSearch('');
   }
 
   function toggleTab(key) {
     setHiddenTabs(prev => {
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
-      // If we're hiding the active tab, switch to first visible tab
       if (key === activeTab && !prev.includes(key)) {
         const remaining = RESOURCE_TABS.filter(t => !next.includes(t.key));
         if (remaining.length) switchTab(remaining[0].key);
