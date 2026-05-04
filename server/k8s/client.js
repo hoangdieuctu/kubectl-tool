@@ -67,8 +67,9 @@ export async function getSecret(filePath, contextName, namespace, name) {
     const res = await c.core.readNamespacedSecret(name, namespace);
     return { item: res.body ?? res, error: null };
   } catch (e) {
-    console.error('[k8s]', e.message);
-    return { item: null, error: e.message };
+    const msg = e.body?.message ?? e.message;
+    console.error('[k8s]', msg);
+    return { item: null, error: msg };
   }
 }
 
