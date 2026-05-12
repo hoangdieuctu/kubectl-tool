@@ -1,8 +1,13 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
 }
 
 * {
@@ -12,9 +17,14 @@
 body {
   margin: 0;
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark body {
   background: #0f1117;
   color: #e2e8f0;
-  -webkit-font-smoothing: antialiased;
 }
 
 #root {

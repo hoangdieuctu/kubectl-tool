@@ -44,21 +44,21 @@ function EnvList({ containers }) {
     <div className="space-y-3">
       {containers.map((c, i) => (
         <div key={i}>
-          <div className="text-xs font-medium text-violet-400 mb-1">{c.name}</div>
+          <div className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">{c.name}</div>
           {c.env?.length ? (
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-slate-500">
+                <tr className="text-slate-500 dark:text-slate-500">
                   <th className="text-left pr-4 pb-1 font-normal">Name</th>
                   <th className="text-left pb-1 font-normal">Value</th>
                 </tr>
               </thead>
               <tbody>
                 {c.env.map((e, j) => (
-                  <tr key={j} className="border-t border-slate-700/50">
-                    <td className="pr-4 py-0.5 text-slate-300 font-mono">{e.name}</td>
-                    <td className="py-0.5 text-slate-400 font-mono break-all">
-                      {e.value ?? (e.valueFrom ? <span className="text-yellow-500 italic">from ref</span> : '-')}
+                  <tr key={j} className="border-t border-slate-200 dark:border-slate-700/50">
+                    <td className="pr-4 py-0.5 text-slate-700 dark:text-slate-300 font-mono">{e.name}</td>
+                    <td className="py-0.5 text-slate-600 dark:text-slate-400 font-mono break-all">
+                      {e.value ?? (e.valueFrom ? <span className="text-yellow-600 dark:text-yellow-500 italic">from ref</span> : '-')}
                     </td>
                   </tr>
                 ))}
@@ -78,7 +78,7 @@ function ExpandableRow({ cols, children }) {
   return (
     <>
       <tr
-        className="border-t border-slate-800 hover:bg-slate-800/50 cursor-pointer"
+        className="border-t border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
         onClick={() => setOpen(o => !o)}
       >
         <td className="pl-3 py-2 w-6">
@@ -89,7 +89,7 @@ function ExpandableRow({ cols, children }) {
         ))}
       </tr>
       {open && (
-        <tr className="border-t border-slate-800 bg-slate-900">
+        <tr className="border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
           <td colSpan={cols.length + 1} className="px-6 py-4">
             {children}
           </td>
@@ -123,7 +123,7 @@ function PodLiveEnv({ ctx, namespace, podName }) {
     return (
       <button
         onClick={load}
-        className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs text-white rounded-md transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-xs text-slate-900 dark:text-white rounded-md transition-colors"
       >
         <RefreshCw size={12} /> Fetch live env
       </button>
@@ -137,24 +137,24 @@ function PodLiveEnv({ ctx, namespace, podName }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs text-violet-400 font-medium">Live env</span>
-        <button onClick={load} className="text-slate-500 hover:text-white transition-colors">
+        <span className="text-xs text-violet-500 dark:text-violet-400 font-medium">Live env</span>
+        <button onClick={load} className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
-      {error && <div className="text-xs text-red-400">{error}</div>}
+      {error && <div className="text-xs text-red-600 dark:text-red-400">{error}</div>}
       {env && (
         <>
           <div className="relative mb-2">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Filter by name…"
-              className="w-full bg-slate-800 border border-slate-700 rounded pl-8 pr-8 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded pl-8 pr-8 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white">
                 <X size={12} />
               </button>
             )}
@@ -162,16 +162,16 @@ function PodLiveEnv({ ctx, namespace, podName }) {
           <div className="text-xs text-slate-500 mb-1">{filtered.length} / {env.length} vars</div>
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-slate-500">
+              <tr className="text-slate-500 dark:text-slate-500">
                 <th className="text-left pr-4 pb-1 font-normal">Name</th>
                 <th className="text-left pb-1 font-normal">Value</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((e, i) => (
-                <tr key={i} className="border-t border-slate-700/50">
-                  <td className="pr-4 py-0.5 text-slate-300 font-mono align-top">{e.name}</td>
-                  <td className="py-0.5 text-slate-400 font-mono whitespace-pre-wrap break-all">{e.value}</td>
+                <tr key={i} className="border-t border-slate-200 dark:border-slate-700/50">
+                  <td className="pr-4 py-0.5 text-slate-700 dark:text-slate-300 font-mono align-top">{e.name}</td>
+                  <td className="py-0.5 text-slate-600 dark:text-slate-400 font-mono whitespace-pre-wrap break-all">{e.value}</td>
                 </tr>
               ))}
             </tbody>
@@ -218,7 +218,7 @@ function PodLogs({ ctx, namespace, podName, containers }) {
           <select
             value={container}
             onChange={e => { setContainer(e.target.value); setLogs(null); }}
-            className="bg-slate-800 border border-slate-700 text-xs text-white rounded px-2 py-1 focus:outline-none focus:border-violet-500"
+            className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white rounded px-2 py-1 focus:outline-none focus:border-violet-500"
           >
             {containers.map(c => (
               <option key={c.name} value={c.name}>{c.name}</option>
@@ -228,32 +228,32 @@ function PodLogs({ ctx, namespace, podName, containers }) {
         <button
           onClick={load}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-xs text-white rounded-md transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-xs text-slate-900 dark:text-white rounded-md transition-colors"
         >
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
           {logs ? 'Refresh' : 'Fetch logs'}
         </button>
         {logs && <span className="text-xs text-slate-500">last 200 lines</span>}
       </div>
-      {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
+      {error && <div className="text-xs text-red-600 dark:text-red-400 mb-2">{error}</div>}
       {logs && (
         <>
           <div className="relative mb-2">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Filter logs…"
-              className="w-full bg-slate-800 border border-slate-700 rounded pl-8 pr-8 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 font-mono"
+              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded pl-8 pr-8 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 font-mono"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white">
                 <X size={12} />
               </button>
             )}
           </div>
           {search && <div className="text-xs text-slate-500 mb-1">{filteredLines.length} matching lines</div>}
-          <pre className="text-xs text-slate-300 font-mono bg-slate-900 border border-slate-700 rounded-lg p-3 overflow-auto max-h-96 whitespace-pre-wrap break-all">
+          <pre className="text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 overflow-auto max-h-96 whitespace-pre-wrap break-all">
             {filteredLines.join('\n')}
           </pre>
         </>
@@ -311,7 +311,7 @@ function PodPortForward({ pod, ctx, onForwardsChange }) {
   return (
     <div className="space-y-3">
       {activeForward ? (
-        <div className="flex items-center gap-3 p-3 bg-emerald-900/20 border border-emerald-700 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-700 rounded-lg">
           <div className="flex-1">
             <div className="text-xs font-medium text-emerald-400">Active forward</div>
             <div className="text-xs text-slate-300 font-mono mt-0.5">{activeForward.ports.join(', ')}</div>
@@ -331,7 +331,7 @@ function PodPortForward({ pod, ctx, onForwardsChange }) {
             onChange={e => setPortsInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleStart()}
             placeholder="8080:8080, 9090:9090"
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 font-mono"
+            className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 font-mono"
           />
           <button
             onClick={handleStart}
@@ -441,7 +441,7 @@ function PodExec({ ctx, namespace, podName, containers }) {
           <select
             value={container}
             onChange={e => setContainer(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-xs text-white rounded px-2 py-1 focus:outline-none focus:border-violet-500"
+            className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white rounded px-2 py-1 focus:outline-none focus:border-violet-500"
           >
             {containers.map(c => (
               <option key={c.name} value={c.name}>{c.name}</option>
@@ -495,7 +495,7 @@ function PodExpandedContent({ pod, ctx, onForwardsChange }) {
             onClick={() => setTab(t.key)}
             className={cn(
               'px-3 py-1 rounded text-xs font-medium transition-colors',
-              tab === t.key ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
+              tab === t.key ? 'bg-violet-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             )}
           >
             {t.label}
@@ -524,35 +524,35 @@ function ResourceTable({ resourceKey, data, ctx, search, setSearch, onForwardsCh
   }, [items, search]);
 
   if (error) return (
-    <div className="p-4 text-red-400 text-sm bg-red-900/20 rounded-lg border border-red-800">
+    <div className="p-4 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
       Error: {error}
     </div>
   );
 
   if (!items.length) return (
-    <div className="p-8 text-center text-slate-500 text-sm">No resources found</div>
+    <div className="p-8 text-center text-slate-500 dark:text-slate-500 text-sm">No resources found</div>
   );
 
   return (
     <div>
       <div className="relative mb-3">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Filter by name…"
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+          className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white">
             <X size={14} />
           </button>
         )}
       </div>
 
-      <div className="text-xs text-slate-500 mb-2">{filtered.length} / {items.length} items</div>
+      <div className="text-xs text-slate-500 dark:text-slate-500 mb-2">{filtered.length} / {items.length} items</div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-800">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
         <table className="w-full">
           <ResourceRows resourceKey={resourceKey} items={filtered} ctx={ctx} onForwardsChange={onForwardsChange} />
         </table>
@@ -589,9 +589,9 @@ function SecretData({ ctx, namespace, name }) {
         const isPrintable = decoded !== null && /^[\x09\x0a\x0d\x20-\x7e-￿]*$/.test(decoded);
         return (
           <div key={k}>
-            <div className="text-xs text-violet-400 font-mono mb-1">{k}</div>
-            <pre className="text-xs text-slate-300 font-mono bg-slate-800 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap break-all">
-              {isPrintable ? decoded : <span className="text-slate-500">[binary] {v}</span>}
+            <div className="text-xs text-violet-500 dark:text-violet-400 font-mono mb-1">{k}</div>
+            <pre className="text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-100 dark:bg-slate-800 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap break-all">
+              {isPrintable ? decoded : <span className="text-slate-400 dark:text-slate-500">[binary] {v}</span>}
             </pre>
           </div>
         );
@@ -605,7 +605,7 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
     case 'pods':
       return (
         <>
-          <thead><tr className="bg-slate-800/80 text-xs text-slate-400">
+          <thead><tr className="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
             <th className="w-6" />
             {['Namespace', 'Name', 'Status', 'Ready', 'Restarts', 'Age'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
@@ -619,12 +619,12 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
               const restarts = containers.reduce((a, c) => a + (c.restartCount || 0), 0);
               return (
                 <ExpandableRow key={i} cols={[
-                  <span className="text-slate-400">{pod.metadata?.namespace}</span>,
-                  <span className="text-white font-mono text-xs">{pod.metadata?.name}</span>,
+                  <span className="text-slate-500 dark:text-slate-400">{pod.metadata?.namespace}</span>,
+                  <span className="text-slate-900 dark:text-white font-mono text-xs">{pod.metadata?.name}</span>,
                   <span className={cn('font-medium', statusColor(status))}>{status}</span>,
-                  <span className="text-slate-300">{ready}/{containers.length}</span>,
-                  <span className={restarts > 0 ? 'text-yellow-400' : 'text-slate-300'}>{restarts}</span>,
-                  <span className="text-slate-400">{getAge(pod.metadata?.creationTimestamp)}</span>,
+                  <span className="text-slate-700 dark:text-slate-300">{ready}/{containers.length}</span>,
+                  <span className={restarts > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-slate-700 dark:text-slate-300'}>{restarts}</span>,
+                  <span className="text-slate-500 dark:text-slate-400">{getAge(pod.metadata?.creationTimestamp)}</span>,
                 ]}>
                   <ErrorBoundary>
                     <PodExpandedContent pod={pod} ctx={ctx} onForwardsChange={onForwardsChange} />
@@ -642,7 +642,7 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
     case 'replicaSets':
       return (
         <>
-          <thead><tr className="bg-slate-800/80 text-xs text-slate-400">
+          <thead><tr className="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
             <th className="w-6" />
             {['Namespace', 'Name', 'Ready', 'Up-to-date', 'Available', 'Age'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
@@ -653,12 +653,12 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
               const s = item.status ?? {};
               return (
                 <ExpandableRow key={i} cols={[
-                  <span className="text-slate-400">{item.metadata?.namespace}</span>,
-                  <span className="text-white font-mono text-xs">{item.metadata?.name}</span>,
-                  <span className="text-slate-300">{s.readyReplicas ?? 0}/{s.replicas ?? 0}</span>,
-                  <span className="text-slate-300">{s.updatedReplicas ?? '-'}</span>,
-                  <span className="text-slate-300">{s.availableReplicas ?? '-'}</span>,
-                  <span className="text-slate-400">{getAge(item.metadata?.creationTimestamp)}</span>,
+                  <span className="text-slate-500 dark:text-slate-400">{item.metadata?.namespace}</span>,
+                  <span className="text-slate-900 dark:text-white font-mono text-xs">{item.metadata?.name}</span>,
+                  <span className="text-slate-700 dark:text-slate-300">{s.readyReplicas ?? 0}/{s.replicas ?? 0}</span>,
+                  <span className="text-slate-700 dark:text-slate-300">{s.updatedReplicas ?? '-'}</span>,
+                  <span className="text-slate-700 dark:text-slate-300">{s.availableReplicas ?? '-'}</span>,
+                  <span className="text-slate-500 dark:text-slate-400">{getAge(item.metadata?.creationTimestamp)}</span>,
                 ]}>
                   <EnvList containers={item.spec?.template?.spec?.containers} />
                 </ExpandableRow>
@@ -671,7 +671,7 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
     case 'services':
       return (
         <>
-          <thead><tr className="bg-slate-800/80 text-xs text-slate-400">
+          <thead><tr className="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
             <th className="w-6" />
             {['Namespace', 'Name', 'Type', 'Cluster IP', 'External IP', 'Ports', 'Age'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
@@ -683,15 +683,15 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
               const extIp = (svc.status?.loadBalancer?.ingress ?? []).map(x => x.ip || x.hostname).join(', ') || '<none>';
               return (
                 <ExpandableRow key={i} cols={[
-                  <span className="text-slate-400">{svc.metadata?.namespace}</span>,
-                  <span className="text-white font-mono text-xs">{svc.metadata?.name}</span>,
-                  <span className="text-blue-400">{svc.spec?.type}</span>,
+                  <span className="text-slate-500 dark:text-slate-400">{svc.metadata?.namespace}</span>,
+                  <span className="text-slate-900 dark:text-white font-mono text-xs">{svc.metadata?.name}</span>,
+                  <span className="text-blue-600 dark:text-blue-400">{svc.spec?.type}</span>,
                   <span className="text-slate-300 font-mono text-xs">{svc.spec?.clusterIP}</span>,
                   <span className="text-slate-400 font-mono text-xs">{extIp}</span>,
                   <span className="text-slate-300 text-xs">{ports}</span>,
-                  <span className="text-slate-400">{getAge(svc.metadata?.creationTimestamp)}</span>,
+                  <span className="text-slate-500 dark:text-slate-400">{getAge(svc.metadata?.creationTimestamp)}</span>,
                 ]}>
-                  <pre className="text-xs text-slate-300 font-mono overflow-auto max-h-64">
+                  <pre className="text-xs text-slate-600 dark:text-slate-300 font-mono overflow-auto max-h-64">
                     {JSON.stringify(svc.spec, null, 2)}
                   </pre>
                 </ExpandableRow>
@@ -704,7 +704,7 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
     case 'nodes':
       return (
         <>
-          <thead><tr className="bg-slate-800/80 text-xs text-slate-400">
+          <thead><tr className="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
             <th className="w-6" />
             {['Name', 'Status', 'Roles', 'Version', 'OS', 'Age'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
@@ -719,14 +719,14 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
                 .map(k => k.split('/')[1]).join(', ') || 'worker';
               return (
                 <ExpandableRow key={i} cols={[
-                  <span className="text-white font-mono text-xs">{node.metadata?.name}</span>,
+                  <span className="text-slate-900 dark:text-white font-mono text-xs">{node.metadata?.name}</span>,
                   <span className={cn('font-medium', statusColor(status))}>{status}</span>,
                   <span className="text-slate-300 text-xs">{roles}</span>,
                   <span className="text-slate-400 font-mono text-xs">{node.status?.nodeInfo?.kubeletVersion}</span>,
                   <span className="text-slate-400 text-xs">{node.status?.nodeInfo?.osImage}</span>,
-                  <span className="text-slate-400">{getAge(node.metadata?.creationTimestamp)}</span>,
+                  <span className="text-slate-500 dark:text-slate-400">{getAge(node.metadata?.creationTimestamp)}</span>,
                 ]}>
-                  <pre className="text-xs text-slate-300 font-mono overflow-auto max-h-64">
+                  <pre className="text-xs text-slate-600 dark:text-slate-300 font-mono overflow-auto max-h-64">
                     {JSON.stringify(node.status?.capacity, null, 2)}
                   </pre>
                 </ExpandableRow>
@@ -739,7 +739,7 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
     case 'configMaps':
       return (
         <>
-          <thead><tr className="bg-slate-800/80 text-xs text-slate-400">
+          <thead><tr className="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
             <th className="w-6" />
             {['Namespace', 'Name', 'Keys', 'Age'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
@@ -748,16 +748,16 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
           <tbody>
             {items.map((cm, i) => (
               <ExpandableRow key={i} cols={[
-                <span className="text-slate-400">{cm.metadata?.namespace}</span>,
-                <span className="text-white font-mono text-xs">{cm.metadata?.name}</span>,
-                <span className="text-slate-300">{Object.keys(cm.data ?? {}).length}</span>,
-                <span className="text-slate-400">{getAge(cm.metadata?.creationTimestamp)}</span>,
+                <span className="text-slate-500 dark:text-slate-400">{cm.metadata?.namespace}</span>,
+                <span className="text-slate-900 dark:text-white font-mono text-xs">{cm.metadata?.name}</span>,
+                <span className="text-slate-700 dark:text-slate-300">{Object.keys(cm.data ?? {}).length}</span>,
+                <span className="text-slate-500 dark:text-slate-400">{getAge(cm.metadata?.creationTimestamp)}</span>,
               ]}>
                 <div className="space-y-2">
                   {Object.entries(cm.data ?? {}).map(([k, v]) => (
                     <div key={k}>
-                      <div className="text-xs text-violet-400 font-mono mb-1">{k}</div>
-                      <pre className="text-xs text-slate-300 font-mono bg-slate-800 p-2 rounded overflow-auto max-h-40">{v}</pre>
+                      <div className="text-xs text-violet-500 dark:text-violet-400 font-mono mb-1">{k}</div>
+                      <pre className="text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-100 dark:bg-slate-800 p-2 rounded overflow-auto max-h-40">{v}</pre>
                     </div>
                   ))}
                 </div>
@@ -770,7 +770,7 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
     case 'secrets':
       return (
         <>
-          <thead><tr className="bg-slate-800/80 text-xs text-slate-400">
+          <thead><tr className="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
             <th className="w-6" />
             {['Namespace', 'Name', 'Type', 'Keys', 'Age'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
@@ -779,11 +779,11 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
           <tbody>
             {items.map((s, i) => (
               <ExpandableRow key={i} cols={[
-                <span className="text-slate-400">{s.metadata?.namespace}</span>,
-                <span className="text-white font-mono text-xs">{s.metadata?.name}</span>,
+                <span className="text-slate-500 dark:text-slate-400">{s.metadata?.namespace}</span>,
+                <span className="text-slate-900 dark:text-white font-mono text-xs">{s.metadata?.name}</span>,
                 <span className="text-slate-400 text-xs">{s.type}</span>,
-                <span className="text-slate-300">{s._dataKeys ?? 0}</span>,
-                <span className="text-slate-400">{getAge(s.metadata?.creationTimestamp)}</span>,
+                <span className="text-slate-700 dark:text-slate-300">{s._dataKeys ?? 0}</span>,
+                <span className="text-slate-500 dark:text-slate-400">{getAge(s.metadata?.creationTimestamp)}</span>,
               ]}>
                 <SecretData ctx={ctx} namespace={s.metadata?.namespace} name={s.metadata?.name} />
               </ExpandableRow>
@@ -795,7 +795,7 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
     default:
       return (
         <>
-          <thead><tr className="bg-slate-800/80 text-xs text-slate-400">
+          <thead><tr className="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
             <th className="w-6" />
             {['Namespace', 'Name', 'Age'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
@@ -804,9 +804,9 @@ function ResourceRows({ resourceKey, items, ctx, onForwardsChange }) {
           <tbody>
             {items.map((item, i) => (
               <ExpandableRow key={i} cols={[
-                <span className="text-slate-400">{item.metadata?.namespace ?? '-'}</span>,
-                <span className="text-white font-mono text-xs">{item.metadata?.name}</span>,
-                <span className="text-slate-400">{getAge(item.metadata?.creationTimestamp)}</span>,
+                <span className="text-slate-500 dark:text-slate-400">{item.metadata?.namespace ?? '-'}</span>,
+                <span className="text-slate-900 dark:text-white font-mono text-xs">{item.metadata?.name}</span>,
+                <span className="text-slate-500 dark:text-slate-400">{getAge(item.metadata?.creationTimestamp)}</span>,
               ]}>
                 <pre className="text-xs text-slate-300 font-mono overflow-auto max-h-64">
                   {JSON.stringify(item, null, 2)}
@@ -848,14 +848,14 @@ function TabSettingsPopover({ allTabs, hidden, onToggle, onClose }) {
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full mt-1 z-50 bg-slate-800 border border-slate-700 rounded-lg shadow-xl p-3 w-52"
+      className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-3 w-52"
     >
-      <div className="text-xs text-slate-400 font-medium mb-2 px-1">Show / hide resources</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-2 px-1">Show / hide resources</div>
       <div className="space-y-0.5 max-h-80 overflow-y-auto">
         {allTabs.map(tab => (
           <label
             key={tab.key}
-            className="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-700 cursor-pointer"
+            className="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
           >
             <input
               type="checkbox"
@@ -863,7 +863,7 @@ function TabSettingsPopover({ allTabs, hidden, onToggle, onClose }) {
               onChange={() => onToggle(tab.key)}
               className="accent-violet-500"
             />
-            <span className="text-xs text-slate-300">{tab.label}</span>
+            <span className="text-xs text-slate-600 dark:text-slate-300">{tab.label}</span>
           </label>
         ))}
       </div>
@@ -903,7 +903,7 @@ export default function ClusterPanel({ data, loading, error, ctx, activeTab, onT
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-shrink-0 flex items-center gap-1 px-4 py-2 border-b border-slate-800 bg-slate-900/50">
+      <div className="flex-shrink-0 flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50">
         <div className="flex gap-1 overflow-x-auto flex-1 min-w-0">
           {tabsWithCount.map(tab => (
             <button
@@ -913,12 +913,12 @@ export default function ClusterPanel({ data, loading, error, ctx, activeTab, onT
                 'flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
                 activeTab === tab.key
                   ? 'bg-violet-600 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               )}
             >
               {tab.label}
               {tab.count > 0 && (
-                <span className={cn('ml-1.5 px-1 rounded text-xs', activeTab === tab.key ? 'bg-violet-500' : 'bg-slate-700 text-slate-400')}>
+                <span className={cn('ml-1.5 px-1 rounded text-xs', activeTab === tab.key ? 'bg-violet-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400')}>
                   {tab.count}
                 </span>
               )}
@@ -930,7 +930,7 @@ export default function ClusterPanel({ data, loading, error, ctx, activeTab, onT
             onClick={() => setSettingsOpen(o => !o)}
             className={cn(
               'p-1.5 rounded-md transition-colors',
-              settingsOpen ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'
+              settingsOpen ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
             )}
             title="Show/hide resources"
           >
@@ -949,9 +949,9 @@ export default function ClusterPanel({ data, loading, error, ctx, activeTab, onT
 
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
-          <div className="p-8 text-center text-slate-500 text-sm animate-pulse">Fetching resources…</div>
+          <div className="p-8 text-center text-slate-500 dark:text-slate-500 text-sm animate-pulse">Fetching resources…</div>
         ) : error ? (
-          <div className="p-4 text-red-400 text-sm bg-red-900/20 rounded-lg border border-red-800">{error}</div>
+          <div className="p-4 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">{error}</div>
         ) : (
           <ResourceTable resourceKey={activeTab} data={data} ctx={ctx} search={search} setSearch={setSearch} onForwardsChange={onForwardsChange} />
         )}
